@@ -6,8 +6,9 @@ MVP scaffold for a private media database with category + tag metadata, starter 
 - Added `.env.example` so setup docs no longer reference a missing file.
 - Added Prisma seed script to create `demo-user` and `demo-workspace` expected by the starter UI.
 - Added API error handling for validation and Prisma FK/unique/not-found errors so failures are actionable.
+- Added a Windows bootstrap script to automate local setup (`scripts/setup-windows.ps1`).
 
-## Quick start
+## Quick start (manual)
 1. Install dependencies:
    ```bash
    npm install
@@ -32,6 +33,29 @@ MVP scaffold for a private media database with category + tag metadata, starter 
    ```bash
    npm run dev
    ```
+
+## Windows one-command bootstrap
+From PowerShell in the repo root:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+./scripts/setup-windows.ps1
+```
+
+This script will:
+- start/create a local PostgreSQL Docker container (`mediadb-postgres`),
+- create `.env` from `.env.example`,
+- set `DATABASE_URL`,
+- install dependencies,
+- run Prisma generate + migrate,
+- seed demo data.
+
+Optional flags:
+
+```powershell
+./scripts/setup-windows.ps1 -UseDockerPostgres:$false
+./scripts/setup-windows.ps1 -DbUser postgres -DbPassword postgres -DbName mediadb -DbPort 5432
+```
 
 ## Starter endpoints
 - `GET /api/health`
