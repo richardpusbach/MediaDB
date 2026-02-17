@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  user
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum AnalysisStatus {
+  pending
+  complete
+  failed
+}
+
+model User {
+  id          String            @id @default(cuid())
+  email       String            @unique
+  displayName String
+  role        Role              @default(user)
+  mfaRequired Boolean           @default(false)
+  status      UserStatus        @default(active)
+  createdAt   DateTime          @default(now())
+  categories  Category[]
+  assets      Asset[]
+  memberships WorkspaceMember[]
+}
+
+model Workspace {
+  id        String            @id @default(cuid())
+  name      String
+  createdAt DateTime          @default(now())
+  members   WorkspaceMember[]
+  assets    Asset[]
+}
+
+model WorkspaceMember {
+  workspaceId String
+  userId      String
+  role        Role @default(user)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets Asset[]
+
+  @@unique([userId, name])
+}
+
+model Asset {
+  id              String         @id @default(cuid())
+  userId          String
+  workspaceId     String
+  title           String
+  userDescription String         @default("")
+  aiDescription   String?
+  aiLabels        String[]
+  categoryId      String
+  tags            String[]
+  filePath        String
+  fileType        String
+  fileSize        Int
+  width           Int?
+  height          Int?
+  thumbnailPath   String?
+  isFavorite      Boolean        @default(false)
+  usageCount      Int            @default(0)
+  isArchived      Boolean        @default(false)
+  deletedAt       DateTime?
+  analysisStatus  AnalysisStatus @default(pending)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([categoryId])
+  @@index([isArchived])
+}
