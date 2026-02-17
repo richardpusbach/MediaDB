@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Category = { id: string; name: string };
 
@@ -17,12 +17,6 @@ type Asset = {
 const DEMO_USER_ID = "demo-user";
 const DEMO_WORKSPACE_ID = "demo-workspace";
 
-function formatBytes(value: number) {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function MediaWorkbench() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -37,11 +31,9 @@ export function MediaWorkbench() {
   const [tagsInput, setTagsInput] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [selectedFileName, setSelectedFileName] = useState("");
   const [filePath, setFilePath] = useState("");
-  const [fileType, setFileType] = useState("");
-  const [fileSize, setFileSize] = useState("0");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [fileType, setFileType] = useState("image/png");
+  const [fileSize, setFileSize] = useState("1024");
 
   const refreshCategories = useCallback(async () => {
     const response = await fetch(`/api/categories?userId=${DEMO_USER_ID}`);
@@ -94,36 +86,9 @@ export function MediaWorkbench() {
     [tagsInput]
   );
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      setSelectedFileName("");
-      setFilePath("");
-      setFileType("");
-      setFileSize("0");
-      return;
-    }
-
-    setSelectedFileName(file.name);
-    setFilePath(`uploads/${DEMO_USER_ID}/${file.name}`);
-    setFileType(file.type || "application/octet-stream");
-    setFileSize(String(file.size));
-
-    if (!title.trim()) {
-      const nameWithoutExtension = file.name.replace(/\.[^.]+$/, "");
-      setTitle(nameWithoutExtension);
-    }
-  };
-
   const handleCreateAsset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-
-    if (!filePath || Number(fileSize) <= 0) {
-      setError("Please choose an image file first.");
-      return;
-    }
 
     try {
       let categoryId = selectedCategoryId;
@@ -172,10 +137,9 @@ export function MediaWorkbench() {
       setTagsInput("");
       setSelectedCategoryId("");
       setNewCategoryName("");
-      setSelectedFileName("");
       setFilePath("");
-      setFileType("");
-      setFileSize("0");
+      setFileType("image/png");
+      setFileSize("1024");
       await refreshAssets();
     } catch {
       setError("Could not create asset.");
@@ -195,30 +159,6 @@ export function MediaWorkbench() {
       <section className="panel">
         <h2>Add Asset</h2>
         <form className="form-grid" onSubmit={handleCreateAsset}>
-          <label>
-            Choose image file
-            <div className="file-picker-row">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Pick image file
-              </button>
-              <span className="file-meta">
-                {selectedFileName ? `${selectedFileName} · ${formatBytes(Number(fileSize))}` : "No file selected"}
-              </span>
-            </div>
-            <input
-              ref={fileInputRef}
-              required
-              type="file"
-              accept=".png,.jpg,.jpeg,.gif,.svg,.webp"
-              onChange={handleFileChange}
-              className="visually-hidden-file-input"
-            />
-          </label>
-
           <label>
             Title
             <input required value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -263,18 +203,29 @@ export function MediaWorkbench() {
           ) : null}
 
           <label>
-            File path (auto)
-            <input required value={filePath} readOnly />
+            File path
+            <input
+              required
+              value={filePath}
+              placeholder="storage/demo/logo.svg"
+              onChange={(event) => setFilePath(event.target.value)}
+            />
           </label>
 
           <label>
-            File type (auto)
-            <input required value={fileType} readOnly />
+            File type
+            <input required value={fileType} onChange={(event) => setFileType(event.target.value)} />
           </label>
 
           <label>
-            File size bytes (auto)
-            <input required value={fileSize} readOnly />
+            File size
+            <input
+              required
+              type="number"
+              min={1}
+              value={fileSize}
+              onChange={(event) => setFileSize(event.target.value)}
+            />
           </label>
 
           <button type="submit">Save asset</button>
