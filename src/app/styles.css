@@ -103,9 +103,3 @@ button {
   .form-grid { grid-template-columns: 1fr; }
   .toolbar, .filters { flex-direction: column; align-items: stretch; }
 }
-
-
-.file-meta {
-  color: #6b7280;
-  font-size: 12px;
-}
