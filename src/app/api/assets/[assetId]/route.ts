@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getPrismaClient } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { toErrorResponse } from "@/lib/http";
 
 const updateAssetSchema = z
@@ -23,7 +23,6 @@ export async function PATCH(
   try {
     const payload = updateAssetSchema.parse(await request.json());
 
-    const prisma = await getPrismaClient();
     const updated = await prisma.asset.update({
       where: { id: params.assetId },
       data: payload

@@ -8,14 +8,12 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:generate": "node scripts/db-generate.mjs",
-    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "node prisma/seed.mjs",
-    "postinstall": "node scripts/db-generate.mjs"
+    "db:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
+    "@prisma/client": "^5.20.0",
     "next": "14.2.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -25,7 +23,7 @@
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "prisma": "5.22.0",
+    "prisma": "^5.20.0",
     "typescript": "^5.5.4"
   }
 }
