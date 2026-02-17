@@ -46,7 +46,7 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
 }
 
 if (Test-Path ".env") {
-  $dbUrl = "DATABASE_URL=\"postgresql://$DbUser`:$DbPassword@localhost`:$DbPort/$DbName?schema=public\""
+  $dbUrl = 'DATABASE_URL="postgresql://{0}:{1}@localhost:{2}/{3}?schema=public"' -f $DbUser, $DbPassword, $DbPort, $DbName
   $content = Get-Content ".env" -Raw
 
   if ($content -match "DATABASE_URL=") {
