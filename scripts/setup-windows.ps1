@@ -14,6 +14,23 @@ function Require-Command([string]$Name) {
   }
 }
 
+function Wait-ForDockerPostgres([string]$ContainerName, [string]$User, [string]$Database) {
+  Write-Host "Waiting for PostgreSQL readiness..." -ForegroundColor Yellow
+
+  $maxAttempts = 30
+  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+    docker exec $ContainerName pg_isready -U $User -d $Database | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "PostgreSQL is ready." -ForegroundColor Green
+      return
+    }
+
+    Start-Sleep -Seconds 2
+  }
+
+  throw "PostgreSQL did not become ready in time. Check container logs with: docker logs $ContainerName"
+}
+
 Write-Host "== MediaDB Windows bootstrap ==" -ForegroundColor Cyan
 
 Require-Command git
@@ -38,6 +55,11 @@ if ($UseDockerPostgres) {
 
   Write-Host "Starting PostgreSQL Docker container..." -ForegroundColor Yellow
   docker start $containerName | Out-Null
+
+  Wait-ForDockerPostgres -ContainerName $containerName -User $DbUser -Database $DbName
+}
+else {
+  Write-Host "Using external PostgreSQL. Ensure DB is running at localhost:$DbPort before continuing." -ForegroundColor Yellow
 }
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
