@@ -57,13 +57,6 @@ Optional flags:
 ./scripts/setup-windows.ps1 -DbUser postgres -DbPassword postgres -DbName mediadb -DbPort 5432
 ```
 
-If you still see a parser error, make sure you are running the latest script version and execute it directly as a file:
-
-```powershell
-git pull
-powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1
-```
-
 ## Starter endpoints
 - `GET /api/health`
 - `GET /api/categories?userId=...`
@@ -76,28 +69,3 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1
 - If dependencies are not installed, `next` is unavailable (`npm run dev` fails).
 - If DB records are not seeded, category/asset creation fails FK checks.
 - If invalid payloads are posted, APIs now return 400 with validation details.
-
-
-### Troubleshooting: `P1001: Can't reach database server at localhost:5432`
-Use one of these options:
-
-1. Docker (recommended):
-   ```powershell
-   docker start mediadb-postgres
-   docker logs mediadb-postgres --tail 50
-   ```
-   Then run:
-   ```powershell
-   npm run db:migrate -- --name init
-   ```
-
-2. Local PostgreSQL service:
-   - Ensure PostgreSQL service is running.
-   - Verify port 5432 is listening.
-   - Confirm `.env` `DATABASE_URL` matches your local credentials.
-
-Tip: rerun bootstrap script after pulling latest changes:
-```powershell
-git pull
-powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1
-```
