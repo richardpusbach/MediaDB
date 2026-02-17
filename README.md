@@ -39,11 +39,11 @@ From PowerShell in the repo root:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-./scripts/setup-windows.ps1 -UseDockerPostgres
+./scripts/setup-windows.ps1
 ```
 
 This script will:
-- start/create a local PostgreSQL Docker container (`mediadb-postgres`) when `-UseDockerPostgres` is provided,
+- start/create a local PostgreSQL Docker container (`mediadb-postgres`),
 - create `.env` from `.env.example`,
 - set `DATABASE_URL`,
 - install dependencies,
@@ -53,16 +53,8 @@ This script will:
 Optional flags:
 
 ```powershell
-./scripts/setup-windows.ps1                           # use local PostgreSQL service
-./scripts/setup-windows.ps1 -UseDockerPostgres        # use Docker PostgreSQL
+./scripts/setup-windows.ps1 -UseDockerPostgres:$false
 ./scripts/setup-windows.ps1 -DbUser postgres -DbPassword postgres -DbName mediadb -DbPort 5432
-```
-
-If you still see a parser error, make sure you are running the latest script version and execute it directly as a file:
-
-```powershell
-git pull
-powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1 -UseDockerPostgres
 ```
 
 ## Starter endpoints
@@ -77,45 +69,3 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1 -UseDockerP
 - If dependencies are not installed, `next` is unavailable (`npm run dev` fails).
 - If DB records are not seeded, category/asset creation fails FK checks.
 - If invalid payloads are posted, APIs now return 400 with validation details.
-
-
-### Troubleshooting: `P1001: Can't reach database server at localhost:5432`
-Use one of these options:
-
-1. Docker (recommended):
-   ```powershell
-   docker start mediadb-postgres
-   docker logs mediadb-postgres --tail 50
-   ```
-   Then run:
-   ```powershell
-   npm run db:migrate -- --name init
-   ```
-
-2. Local PostgreSQL service:
-   - Ensure PostgreSQL service is running.
-   - Verify port 5432 is listening.
-   - Confirm `.env` `DATABASE_URL` matches your local credentials.
-
-Tip: rerun bootstrap script after pulling latest changes:
-```powershell
-git pull
-powershell -ExecutionPolicy Bypass -File .\scripts\setup-windows.ps1 -UseDockerPostgres
-```
-
-
-### Troubleshooting: `Required command 'docker' is not installed or not on PATH.`
-You are **not** doing anything wrong. This means Docker Desktop is not installed or not on PATH.
-
-Use one of these paths:
-
-1. Use local PostgreSQL service (no Docker):
-   ```powershell
-   .\scripts\setup-windows.ps1
-   ```
-2. Use Docker PostgreSQL:
-   - Install Docker Desktop and restart PowerShell
-   - Then run:
-   ```powershell
-   .\scripts\setup-windows.ps1 -UseDockerPostgres
-   ```

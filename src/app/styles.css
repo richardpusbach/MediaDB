@@ -41,15 +41,6 @@ label {
   font-size: 14px;
 }
 
-.file-input-field {
-  display: grid;
-  gap: 6px;
-}
-
-.field-label {
-  font-size: 14px;
-}
-
 input, textarea, select, button {
   font: inherit;
   border: 1px solid #d1d5db;
@@ -111,29 +102,4 @@ button {
 @media (max-width: 720px) {
   .form-grid { grid-template-columns: 1fr; }
   .toolbar, .filters { flex-direction: column; align-items: stretch; }
-}
-
-
-.file-meta {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-
-.file-picker-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.secondary-button {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  color: #111827;
-}
-
-.native-file-input {
-  padding: 7px;
-  background: #fff;
 }
