@@ -1,5 +1,5 @@
 param(
-  [switch]$UseDockerPostgres,
+  [switch]$UseDockerPostgres = $true,
   [string]$DbUser = "postgres",
   [string]$DbPassword = "postgres",
   [string]$DbName = "mediadb",
@@ -12,49 +12,6 @@ function Require-Command([string]$Name) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
     throw "Required command '$Name' is not installed or not on PATH."
   }
-}
-
-function Invoke-Checked([ScriptBlock]$Command, [string]$ErrorMessage) {
-  & $Command
-  if ($LASTEXITCODE -ne 0) {
-    throw "$ErrorMessage (exit code: $LASTEXITCODE)"
-  }
-}
-
-function Test-PostgresPort([int]$Port) {
-  try {
-    $client = New-Object System.Net.Sockets.TcpClient
-    $iar = $client.BeginConnect("localhost", $Port, $null, $null)
-    $connected = $iar.AsyncWaitHandle.WaitOne(1000, $false)
-    if ($connected -and $client.Connected) {
-      $client.EndConnect($iar)
-      $client.Close()
-      return $true
-    }
-
-    $client.Close()
-    return $false
-  }
-  catch {
-    return $false
-  }
-}
-
-function Wait-ForDockerPostgres([string]$ContainerName, [string]$User, [string]$Database) {
-  Write-Host "Waiting for PostgreSQL readiness..." -ForegroundColor Yellow
-
-  $maxAttempts = 30
-  for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-    docker exec $ContainerName pg_isready -U $User -d $Database | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-      Write-Host "PostgreSQL is ready." -ForegroundColor Green
-      return
-    }
-
-    Start-Sleep -Seconds 2
-  }
-
-  throw "PostgreSQL did not become ready in time. Check container logs with: docker logs $ContainerName"
 }
 
 Write-Host "== MediaDB Windows bootstrap ==" -ForegroundColor Cyan
@@ -81,16 +38,6 @@ if ($UseDockerPostgres) {
 
   Write-Host "Starting PostgreSQL Docker container..." -ForegroundColor Yellow
   docker start $containerName | Out-Null
-
-  Wait-ForDockerPostgres -ContainerName $containerName -User $DbUser -Database $DbName
-}
-else {
-  Write-Host "Docker mode is OFF. Using external PostgreSQL at localhost:$DbPort" -ForegroundColor Yellow
-  Write-Host "(Use -UseDockerPostgres to auto-provision Docker PostgreSQL.)" -ForegroundColor DarkYellow
-}
-
-if (-not (Test-PostgresPort -Port $DbPort)) {
-  throw "PostgreSQL is not reachable at localhost:$DbPort. Start PostgreSQL service, or rerun with -UseDockerPostgres."
 }
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
@@ -99,8 +46,7 @@ if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
 }
 
 if (Test-Path ".env") {
-  $dbUrlValue = "postgresql://$($DbUser):$($DbPassword)@localhost:$($DbPort)/$($DbName)?schema=public"
-  $dbUrl = 'DATABASE_URL="{0}"' -f $dbUrlValue
+  $dbUrl = 'DATABASE_URL="postgresql://{0}:{1}@localhost:{2}/{3}?schema=public"' -f $DbUser, $DbPassword, $DbPort, $DbName
   $content = Get-Content ".env" -Raw
 
   if ($content -match "DATABASE_URL=") {
@@ -110,56 +56,20 @@ if (Test-Path ".env") {
     $content = $content.TrimEnd() + "`r`n" + $dbUrl + "`r`n"
   }
 
-  Set-Content ".env" $content -Encoding UTF8
+  Set-Content ".env" $content
   Write-Host "Updated DATABASE_URL in .env" -ForegroundColor Green
 }
 
 Write-Host "Installing npm dependencies..." -ForegroundColor Yellow
-Invoke-Checked { npm install } "npm install failed"
+npm install
 
 Write-Host "Generating Prisma client..." -ForegroundColor Yellow
-try {
-  Invoke-Checked { npm run db:generate } "Prisma generate failed"
-}
-catch {
-  Write-Host "Prisma generate failed. Attempting clean dependency reinstall..." -ForegroundColor Yellow
+npm run db:generate
 
-  if (Test-Path "node_modules") {
-    Remove-Item "node_modules" -Recurse -Force
-  }
-
-  if (Test-Path "package-lock.json") {
-    Remove-Item "package-lock.json" -Force
-  }
-
-  Invoke-Checked { npm cache clean --force } "npm cache clean failed"
-  Invoke-Checked { npm install } "npm reinstall failed"
-  Invoke-Checked { npm run db:generate } "Prisma generate failed after reinstall"
-}
-
-if (Test-Path "prisma/migrations") {
-  Write-Host "Removing local prisma/migrations to avoid stale migration history during bootstrap..." -ForegroundColor Yellow
-  Remove-Item "prisma/migrations" -Recurse -Force
-}
-
-Write-Host "Syncing schema with database (db push)..." -ForegroundColor Yellow
-try {
-  Invoke-Checked { npm run db:push -- --accept-data-loss } "Prisma db push failed"
-}
-catch {
-  Write-Host "db push failed. Resetting public schema and retrying once..." -ForegroundColor Yellow
-  $resetSql = @"
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
-"@
-  $resetSql | npx prisma db execute --stdin --schema prisma/schema.prisma
-  if ($LASTEXITCODE -ne 0) {
-    throw "Prisma db execute failed while resetting schema (exit code: $LASTEXITCODE)"
-  }
-  Invoke-Checked { npm run db:push -- --accept-data-loss } "Prisma db push retry failed"
-}
+Write-Host "Running Prisma migration..." -ForegroundColor Yellow
+npm run db:migrate -- --name init
 
 Write-Host "Seeding demo data..." -ForegroundColor Yellow
-Invoke-Checked { npm run db:seed } "Prisma seed failed"
+npm run db:seed
 
 Write-Host "Bootstrap complete. Start app with: npm run dev" -ForegroundColor Green

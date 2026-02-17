@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getPrismaClient } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { toErrorResponse } from "@/lib/http";
 
 const createCategorySchema = z.object({
@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
-    const prisma = await getPrismaClient();
     const categories = await prisma.category.findMany({
       where: { userId },
       orderBy: { name: "asc" }
@@ -32,7 +31,6 @@ export async function POST(request: NextRequest) {
   try {
     const payload = createCategorySchema.parse(await request.json());
 
-    const prisma = await getPrismaClient();
     const category = await prisma.category.upsert({
       where: {
         userId_name: {
