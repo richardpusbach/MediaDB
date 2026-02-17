@@ -103,31 +103,3 @@ button {
   .form-grid { grid-template-columns: 1fr; }
   .toolbar, .filters { flex-direction: column; align-items: stretch; }
 }
-
-
-.file-meta {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-
-.file-picker-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.secondary-button {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-  color: #111827;
-}
-
-.visually-hidden-file-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 1px;
-  height: 1px;
-}
