@@ -119,6 +119,7 @@ If using your own local PostgreSQL, install/enable pgvector in that DB and then 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
+When `-RecreateDbContainer` is used, the script also removes stale local `*_init` migrations so only the canonical baseline remains.
 
 
 ## Troubleshooting `P1001: Can't reach database server at localhost:5432`
