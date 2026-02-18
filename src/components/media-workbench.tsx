@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Category = { id: string; name: string };
 
@@ -10,12 +10,23 @@ type Asset = {
   userDescription: string;
   fileType: string;
   fileSize: number;
+  filePath: string;
+  thumbnailPath?: string | null;
   tags: string[];
   category?: Category;
 };
 
 const DEMO_USER_ID = "demo-user";
 const DEMO_WORKSPACE_ID = "demo-workspace";
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read selected file."));
+    reader.readAsDataURL(file);
+  });
+}
 
 export function MediaWorkbench() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -31,9 +42,9 @@ export function MediaWorkbench() {
   const [tagsInput, setTagsInput] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [filePath, setFilePath] = useState("");
-  const [fileType, setFileType] = useState("image/png");
-  const [fileSize, setFileSize] = useState("1024");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshCategories = useCallback(async () => {
     const response = await fetch(`/api/categories?userId=${DEMO_USER_ID}`);
@@ -86,9 +97,32 @@ export function MediaWorkbench() {
     [tagsInput]
   );
 
+  const handleFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+
+    if (!file || !file.type.startsWith("image/")) {
+      setSelectedThumbnail(null);
+      return;
+    }
+
+    try {
+      const preview = await readFileAsDataUrl(file);
+      setSelectedThumbnail(preview);
+    } catch {
+      setSelectedThumbnail(null);
+      setError("Could not generate thumbnail preview for selected file.");
+    }
+  };
+
   const handleCreateAsset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (!selectedFile) {
+      setError("Please choose a file to attach.");
+      return;
+    }
 
     try {
       let categoryId = selectedCategoryId;
@@ -120,9 +154,10 @@ export function MediaWorkbench() {
           userDescription: description,
           categoryId,
           tags,
-          filePath,
-          fileType,
-          fileSize: Number(fileSize)
+          filePath: selectedFile.name,
+          fileType: selectedFile.type || "application/octet-stream",
+          fileSize: selectedFile.size,
+          thumbnailPath: selectedThumbnail
         })
       });
 
@@ -137,9 +172,9 @@ export function MediaWorkbench() {
       setTagsInput("");
       setSelectedCategoryId("");
       setNewCategoryName("");
-      setFilePath("");
-      setFileType("image/png");
-      setFileSize("1024");
+      setSelectedFile(null);
+      setSelectedThumbnail(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       await refreshAssets();
     } catch {
       setError("Could not create asset.");
@@ -202,31 +237,34 @@ export function MediaWorkbench() {
             </label>
           ) : null}
 
-          <label>
-            File path
+          <label className="file-picker">
+            Attach file
             <input
+              ref={fileInputRef}
               required
-              value={filePath}
-              placeholder="storage/demo/logo.svg"
-              onChange={(event) => setFilePath(event.target.value)}
+              type="file"
+              onChange={(event) => {
+                void handleFileSelected(event);
+              }}
             />
           </label>
 
-          <label>
-            File type
-            <input required value={fileType} onChange={(event) => setFileType(event.target.value)} />
-          </label>
-
-          <label>
-            File size
-            <input
-              required
-              type="number"
-              min={1}
-              value={fileSize}
-              onChange={(event) => setFileSize(event.target.value)}
-            />
-          </label>
+          <div className="file-meta">
+            <p>
+              <strong>Selected file:</strong> {selectedFile?.name ?? "None"}
+            </p>
+            <p>
+              <strong>Type:</strong> {selectedFile?.type || "-"}
+            </p>
+            <p>
+              <strong>Size:</strong> {selectedFile ? `${selectedFile.size.toLocaleString()} bytes` : "-"}
+            </p>
+            {selectedThumbnail ? (
+              <img className="thumbnail-preview" src={selectedThumbnail} alt="Selected file preview" />
+            ) : (
+              <p className="muted">Thumbnail preview appears here for image files.</p>
+            )}
+          </div>
 
           <button type="submit">Save asset</button>
         </form>
@@ -261,9 +299,13 @@ export function MediaWorkbench() {
         <div className="asset-grid">
           {assets.map((asset) => (
             <article key={asset.id} className="asset-card">
+              {asset.thumbnailPath ? (
+                <img className="asset-thumbnail" src={asset.thumbnailPath} alt={`${asset.title} thumbnail`} />
+              ) : null}
               <h3>{asset.title}</h3>
               <p className="muted">{asset.category?.name ?? "Uncategorized"}</p>
               <p>{asset.userDescription || "No description"}</p>
+              <p className="muted">File: {asset.filePath}</p>
               <p className="muted">
                 {asset.fileType} · {asset.fileSize.toLocaleString()} bytes
               </p>
