@@ -8,6 +8,24 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+
+function Wait-PostgresReady([string]$ContainerName, [string]$User, [string]$Database, [int]$TimeoutSeconds = 60) {
+  Write-Host "Waiting for PostgreSQL to accept connections..." -ForegroundColor Yellow
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    $null = docker exec $ContainerName pg_isready -U $User -d $Database 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "PostgreSQL is ready." -ForegroundColor Green
+      return
+    }
+
+    Start-Sleep -Seconds 2
+  }
+
+  throw "PostgreSQL did not become ready within $TimeoutSeconds seconds."
+}
+
 function Require-Command([string]$Name) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
     throw "Required command '$Name' is not installed or not on PATH."
@@ -38,6 +56,8 @@ if ($UseDockerPostgres) {
 
   Write-Host "Starting PostgreSQL Docker container..." -ForegroundColor Yellow
   docker start $containerName | Out-Null
+
+  Wait-PostgresReady -ContainerName $containerName -User $DbUser -Database $DbName
 }
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
