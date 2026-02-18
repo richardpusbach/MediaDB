@@ -115,6 +115,30 @@ If using your own local PostgreSQL, install/enable pgvector in that DB and then 
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
+
+## Troubleshooting `P1001: Can't reach database server at localhost:5432`
+This error means Prisma cannot connect to PostgreSQL using your `DATABASE_URL`.
+
+1. Verify your `.env` points to the DB you expect:
+   ```bash
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mediadb?schema=public"
+   ```
+2. If you use Docker, make sure PostgreSQL is running:
+   ```powershell
+   docker ps --filter "name=mediadb-postgres"
+   docker start mediadb-postgres
+   ```
+3. If the container is up but still booting, wait until ready:
+   ```powershell
+   docker exec mediadb-postgres pg_isready -U postgres -d mediadb
+   ```
+4. Re-run migration:
+   ```bash
+   npm run db:migrate -- --name init
+   ```
+
+Tip: On Windows, `./scripts/setup-windows.ps1` now waits for PostgreSQL readiness before running migrations.
+
 ## Starter endpoints
 - `GET /api/health`
 - `GET /api/categories?userId=...`
