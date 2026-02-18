@@ -3,7 +3,9 @@ param(
   [string]$DbUser = "postgres",
   [string]$DbPassword = "postgres",
   [string]$DbName = "mediadb",
-  [int]$DbPort = 5432
+  [int]$DbPort = 5432,
+  [string]$DbImage = "pgvector/pgvector:pg15",
+  [switch]$RecreateDbContainer = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,14 +46,28 @@ if ($UseDockerPostgres) {
   $containerName = "mediadb-postgres"
   $exists = docker ps -a --format "{{.Names}}" | Select-String -SimpleMatch $containerName
 
+  if ($exists -and $RecreateDbContainer) {
+    Write-Host "Removing existing PostgreSQL container '$containerName'..." -ForegroundColor Yellow
+    docker rm -f $containerName | Out-Null
+    $exists = $null
+  }
+
+  if ($exists) {
+    $currentImage = docker inspect --format "{{.Config.Image}}" $containerName
+    if ($currentImage -notlike "pgvector/pgvector*") {
+      Write-Host "Container '$containerName' uses image '$currentImage'." -ForegroundColor Yellow
+      Write-Host "For vector support, recreate it with -RecreateDbContainer to use '$DbImage'." -ForegroundColor Yellow
+    }
+  }
+
   if (-not $exists) {
-    Write-Host "Creating PostgreSQL Docker container '$containerName'..." -ForegroundColor Yellow
+    Write-Host "Creating PostgreSQL Docker container '$containerName' using image '$DbImage'..." -ForegroundColor Yellow
     docker run --name $containerName `
       -e POSTGRES_USER=$DbUser `
       -e POSTGRES_PASSWORD=$DbPassword `
       -e POSTGRES_DB=$DbName `
       -p ${DbPort}:5432 `
-      -d postgres:15 | Out-Null
+      -d $DbImage | Out-Null
   }
 
   Write-Host "Starting PostgreSQL Docker container..." -ForegroundColor Yellow
