@@ -28,23 +28,6 @@ function Wait-PostgresReady([string]$ContainerName, [string]$User, [string]$Data
   throw "PostgreSQL did not become ready within $TimeoutSeconds seconds."
 }
 
-
-
-function Remove-StaleInitMigrations([string]$CanonicalMigration = "20260219000000_init") {
-  $migrationsRoot = "prisma/migrations"
-  if (-not (Test-Path $migrationsRoot)) {
-    return
-  }
-
-  $stale = Get-ChildItem $migrationsRoot -Directory |
-    Where-Object { $_.Name -like "*_init" -and $_.Name -ne $CanonicalMigration }
-
-  foreach ($migration in $stale) {
-    Write-Host "Removing stale local migration '$($migration.Name)' to avoid Prisma conflicts..." -ForegroundColor Yellow
-    Remove-Item $migration.FullName -Recurse -Force
-  }
-}
-
 function Require-Command([string]$Name) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
     throw "Required command '$Name' is not installed or not on PATH."
@@ -91,9 +74,6 @@ if ($UseDockerPostgres) {
   docker start $containerName | Out-Null
 
   Wait-PostgresReady -ContainerName $containerName -User $DbUser -Database $DbName
-
-  Write-Host "Ensuring pgvector extension is enabled..." -ForegroundColor Yellow
-  docker exec $containerName psql -U $DbUser -d $DbName -c "CREATE EXTENSION IF NOT EXISTS vector;" | Out-Null
 }
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {
@@ -121,10 +101,6 @@ npm install
 
 Write-Host "Generating Prisma client..." -ForegroundColor Yellow
 npm run db:generate
-
-if ($RecreateDbContainer) {
-  Remove-StaleInitMigrations
-}
 
 Write-Host "Applying Prisma migrations..." -ForegroundColor Yellow
 npx prisma migrate deploy
