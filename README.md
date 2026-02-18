@@ -38,6 +38,15 @@ MVP scaffold for a private media database with category + tag metadata, starter 
    npm run dev
    ```
 
+
+## NPM script output clarification
+- `npm pkg get scripts.db:generate` prints the script definition string from `package.json` (expected: `"prisma generate"`).
+- `npm pkg get scripts.db:push` prints the script definition string (expected: `"prisma db push"`).
+- To actually execute Prisma generation, run:
+  ```bash
+  npm run db:generate
+  ```
+
 ## Windows one-command bootstrap
 From PowerShell in the repo root:
 
@@ -60,6 +69,30 @@ Optional flags:
 ./scripts/setup-windows.ps1 -UseDockerPostgres:$false
 ./scripts/setup-windows.ps1 -DbUser postgres -DbPassword postgres -DbName mediadb -DbPort 5432
 ```
+
+
+## Troubleshooting `P1001: Can't reach database server at localhost:5432`
+This error means Prisma cannot connect to PostgreSQL using your `DATABASE_URL`.
+
+1. Verify your `.env` points to the DB you expect:
+   ```bash
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mediadb?schema=public"
+   ```
+2. If you use Docker, make sure PostgreSQL is running:
+   ```powershell
+   docker ps --filter "name=mediadb-postgres"
+   docker start mediadb-postgres
+   ```
+3. If the container is up but still booting, wait until ready:
+   ```powershell
+   docker exec mediadb-postgres pg_isready -U postgres -d mediadb
+   ```
+4. Re-run migration:
+   ```bash
+   npm run db:migrate -- --name init
+   ```
+
+Tip: On Windows, `./scripts/setup-windows.ps1` now waits for PostgreSQL readiness before running migrations.
 
 ## Starter endpoints
 - `GET /api/health`
