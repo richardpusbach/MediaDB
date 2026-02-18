@@ -102,8 +102,8 @@ npm install
 Write-Host "Generating Prisma client..." -ForegroundColor Yellow
 npm run db:generate
 
-Write-Host "Running Prisma migration..." -ForegroundColor Yellow
-npm run db:migrate -- --name init
+Write-Host "Applying Prisma migrations..." -ForegroundColor Yellow
+npx prisma migrate deploy
 
 Write-Host "Seeding demo data..." -ForegroundColor Yellow
 npm run db:seed

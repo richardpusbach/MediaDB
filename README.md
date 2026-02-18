@@ -23,7 +23,12 @@ MVP scaffold for a private media database with category + tag metadata, starter 
    ```
 4. Run migrations:
    ```bash
-   npm run db:migrate -- --name init
+   npm run db:migrate
+   ```
+   This repo now includes a checked-in baseline migration, so you should not need `--name init` for first-time setup.
+   Or, for a fast schema sync without creating a migration file:
+   ```bash
+   npm run db:push
    ```
    Or, for a fast schema sync without creating a migration file:
    ```bash
