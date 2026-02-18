@@ -74,9 +74,6 @@ if ($UseDockerPostgres) {
   docker start $containerName | Out-Null
 
   Wait-PostgresReady -ContainerName $containerName -User $DbUser -Database $DbName
-
-  Write-Host "Ensuring pgvector extension is enabled..." -ForegroundColor Yellow
-  docker exec $containerName psql -U $DbUser -d $DbName -c "CREATE EXTENSION IF NOT EXISTS vector;" | Out-Null
 }
 
 if (-not (Test-Path ".env") -and (Test-Path ".env.example")) {

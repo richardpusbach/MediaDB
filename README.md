@@ -30,6 +30,10 @@ MVP scaffold for a private media database with category + tag metadata, starter 
    ```bash
    npm run db:push
    ```
+   Or, for a fast schema sync without creating a migration file:
+   ```bash
+   npm run db:push
+   ```
 5. Seed demo records required by the starter UI:
    ```bash
    npm run db:seed
@@ -91,7 +95,7 @@ This error means Prisma cannot connect to PostgreSQL using your `DATABASE_URL`.
    ```
 4. Re-run migration:
    ```bash
-   npm run db:migrate
+   npm run db:migrate -- --name init
    ```
 
 Tip: On Windows, `./scripts/setup-windows.ps1` now waits for PostgreSQL readiness before running migrations.
@@ -108,7 +112,7 @@ If using Docker:
    ```
 2. Re-run migration:
    ```bash
-   npm run db:migrate
+   npm run db:migrate -- --name init
    ```
 
 If using your own local PostgreSQL, install/enable pgvector in that DB and then run:
@@ -116,23 +120,29 @@ If using your own local PostgreSQL, install/enable pgvector in that DB and then 
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-## Troubleshooting `P3006` on shadow database (`type "vector" does not exist`)
-This happens when Prisma validates a migration that creates a `vector` column before the `vector` extension is enabled in that migration.
 
-What to do:
-1. Pull the latest repo changes (includes a baseline migration that enables `vector`).
-2. Reset and re-apply local DB state:
+## Troubleshooting `P1001: Can't reach database server at localhost:5432`
+This error means Prisma cannot connect to PostgreSQL using your `DATABASE_URL`.
+
+1. Verify your `.env` points to the DB you expect:
+   ```bash
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mediadb?schema=public"
+   ```
+2. If you use Docker, make sure PostgreSQL is running:
    ```powershell
-   npm run db:reset
-   npm run db:migrate
-   npm run db:seed
+   docker ps --filter "name=mediadb-postgres"
+   docker start mediadb-postgres
+   ```
+3. If the container is up but still booting, wait until ready:
+   ```powershell
+   docker exec mediadb-postgres pg_isready -U postgres -d mediadb
+   ```
+4. Re-run migration:
+   ```bash
+   npm run db:migrate -- --name init
    ```
 
-If you still use Docker and have stale state, recreate the container:
-```powershell
-docker rm -f mediadb-postgres
-./scripts/setup-windows.ps1 -RecreateDbContainer
-```
+Tip: On Windows, `./scripts/setup-windows.ps1` now waits for PostgreSQL readiness before running migrations.
 
 ## Starter endpoints
 - `GET /api/health`
