@@ -25,6 +25,10 @@ MVP scaffold for a private media database with category + tag metadata, starter 
    ```bash
    npm run db:migrate -- --name init
    ```
+   Or, for a fast schema sync without creating a migration file:
+   ```bash
+   npm run db:push
+   ```
 5. Seed demo records required by the starter UI:
    ```bash
    npm run db:seed
