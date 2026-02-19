@@ -124,8 +124,6 @@ export function MediaWorkbench() {
     }
   };
 
-  const handleCreateAsset = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
     setError(null);
     setViewMode("edit");
   };
