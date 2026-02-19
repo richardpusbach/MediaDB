@@ -185,3 +185,34 @@ button:disabled {
   .form-grid { grid-template-columns: 1fr; }
   .hero, .toolbar, .filters, .form-header { flex-direction: column; align-items: stretch; }
 }
+
+.file-picker,
+.file-meta {
+  grid-column: 1 / -1;
+}
+
+.file-meta {
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.file-meta p {
+  margin-bottom: 6px;
+}
+
+.thumbnail-preview,
+.asset-thumbnail {
+  width: 100%;
+  max-width: 240px;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+}
+
+.asset-thumbnail {
+  margin-bottom: 8px;
+}
