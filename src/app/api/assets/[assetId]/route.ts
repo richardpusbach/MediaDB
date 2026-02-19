@@ -37,3 +37,22 @@ export async function PATCH(
     return toErrorResponse(error);
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { assetId: string } }
+) {
+  try {
+    const archived = await prisma.asset.update({
+      where: { id: params.assetId },
+      data: {
+        isArchived: true,
+        deletedAt: new Date()
+      }
+    });
+
+    return NextResponse.json({ data: archived });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
