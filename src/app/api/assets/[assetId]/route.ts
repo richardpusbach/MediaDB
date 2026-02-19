@@ -9,6 +9,10 @@ const updateAssetSchema = z
     userDescription: z.string().optional(),
     categoryId: z.string().min(1).optional(),
     tags: z.array(z.string()).optional(),
+    filePath: z.string().min(1).optional(),
+    fileType: z.string().min(1).optional(),
+    fileSize: z.number().int().positive().optional(),
+    thumbnailPath: z.string().min(1).nullable().optional(),
     isFavorite: z.boolean().optional(),
     isArchived: z.boolean().optional()
   })

@@ -12,7 +12,8 @@ const createAssetSchema = z.object({
   tags: z.array(z.string()).default([]),
   filePath: z.string().min(1),
   fileType: z.string().min(1),
-  fileSize: z.number().int().positive()
+  fileSize: z.number().int().positive(),
+  thumbnailPath: z.string().min(1).optional()
 });
 
 export async function GET(request: NextRequest) {
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
         filePath: payload.filePath,
         fileType: payload.fileType,
         fileSize: payload.fileSize,
+        thumbnailPath: payload.thumbnailPath,
         analysisStatus: "pending"
       }
     });
