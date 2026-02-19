@@ -43,6 +43,7 @@ export function MediaWorkbench() {
   const [search, setSearch] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState("");
 
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -53,44 +54,51 @@ export function MediaWorkbench() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshCategories = useCallback(async () => {
-    const response = await fetch(`/api/categories?userId=${DEMO_USER_ID}`);
-    const body = await response.json();
+    const res = await fetch(`/api/categories?userId=${DEMO_USER_ID}`);
+    const body = await res.json();
     setCategories(body.data ?? []);
   }, []);
 
   const refreshAssets = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const params = new URLSearchParams({ userId: DEMO_USER_ID });
       if (search.trim()) params.set("q", search.trim());
       if (filterCategoryId) params.set("categoryId", filterCategoryId);
 
-      const response = await fetch(`/api/assets?${params.toString()}`);
-      const body = await response.json();
-
-      if (!response.ok) {
+      const res = await fetch(`/api/assets?${params.toString()}`);
+      const body = await res.json();
+      if (!res.ok) {
         setError(body.error ?? "Could not load assets.");
         setAssets([]);
         return;
       }
-
       setAssets(body.data ?? []);
     } catch {
       setError("Could not load assets.");
     } finally {
       setLoading(false);
     }
-  }, [filterCategoryId, search]);
+  }, [search, filterCategoryId]);
 
   useEffect(() => {
     void refreshCategories();
-  }, [refreshCategories]);
-
-  useEffect(() => {
     void refreshAssets();
-  }, [refreshAssets]);
+  }, [refreshCategories, refreshAssets]);
+
+  const resetForm = () => {
+    setEditingAssetId(null);
+    setTitle("");
+    setDescription("");
+    setTagsInput("");
+    setSelectedCategoryId("");
+    setNewCategoryName("");
+    setSelectedFile(null);
+    setThumbnailPreview(null);
+    setIsFavorite(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const tags = useMemo(
     () =>
@@ -122,6 +130,17 @@ export function MediaWorkbench() {
   const handleCreateAsset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setViewMode("edit");
+  };
+
+  const handleSelectFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+
+    if (!file || !file.type.startsWith("image/")) {
+      setThumbnailPreview(null);
+      return;
+    }
 
     if (!selectedFile) {
       setError("Please choose a file to attach.");
@@ -131,7 +150,23 @@ export function MediaWorkbench() {
     try {
       const categoryId = await ensureCategory();
 
-      const assetResponse = await fetch("/api/assets", {
+    await refreshCategories();
+    return body.data.id as string;
+  };
+
+  const onCreate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (!selectedFile) {
+      setError("Please choose a file to attach.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const categoryId = await ensureCategoryId();
+      const res = await fetch("/api/assets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,11 +182,45 @@ export function MediaWorkbench() {
           thumbnailPath: selectedThumbnail
         })
       });
-
-      const assetBody = await assetResponse.json();
-      if (!assetResponse.ok) {
-        setError(assetBody.error ?? "Could not create asset.");
+      const body = await res.json();
+      if (!res.ok) {
+        setError(body.error ?? "Could not create asset.");
         return;
+      }
+      await refreshAssets();
+      goToGallery();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not create asset.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onUpdate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (!editingAssetId) {
+      setError("No asset selected.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const categoryId = await ensureCategoryId();
+      const payload: Record<string, unknown> = {
+        title,
+        userDescription: description,
+        categoryId,
+        tags,
+        isFavorite
+      };
+
+      if (selectedFile) {
+        payload.filePath = selectedFile.name;
+        payload.fileType = selectedFile.type || "application/octet-stream";
+        payload.fileSize = selectedFile.size;
+        payload.thumbnailPath = thumbnailPreview;
       }
 
       setTitle("");
