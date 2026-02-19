@@ -373,9 +373,13 @@ export function MediaWorkbench() {
             )}
           </div>
 
-          <button type="submit">Save asset</button>
-        </form>
-      </section>
+        <button className="primary" type="submit" disabled={submitting}>
+          {submitting ? "Saving..." : "Save record"}
+        </button>
+      </form>
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  );
 
             <div className="file-meta">
               <p>
@@ -416,8 +420,13 @@ export function MediaWorkbench() {
               <input required value={title} onChange={(event) => setTitle(event.target.value)} />
             </label>
 
-        {error ? <p className="error">{error}</p> : null}
-        {loading ? <p>Loading...</p> : null}
+        <button className="primary" type="submit" disabled={submitting}>
+          {submitting ? "Saving..." : "Save changes"}
+        </button>
+      </form>
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  );
 
         <div className="asset-grid">
           {assets.map((asset) => (
