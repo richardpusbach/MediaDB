@@ -30,6 +30,10 @@ MVP scaffold for a private media database with category + tag metadata, starter 
    ```bash
    npm run db:push
    ```
+   Or, for a fast schema sync without creating a migration file:
+   ```bash
+   npm run db:push
+   ```
 5. Seed demo records required by the starter UI:
    ```bash
    npm run db:seed
@@ -71,6 +75,50 @@ Optional flags:
 ./scripts/setup-windows.ps1 -DbUser postgres -DbPassword postgres -DbName mediadb -DbPort 5432
 ./scripts/setup-windows.ps1 -RecreateDbContainer
 ```
+
+
+## Troubleshooting `P1001: Can't reach database server at localhost:5432`
+This error means Prisma cannot connect to PostgreSQL using your `DATABASE_URL`.
+
+1. Verify your `.env` points to the DB you expect:
+   ```bash
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mediadb?schema=public"
+   ```
+2. If you use Docker, make sure PostgreSQL is running:
+   ```powershell
+   docker ps --filter "name=mediadb-postgres"
+   docker start mediadb-postgres
+   ```
+3. If the container is up but still booting, wait until ready:
+   ```powershell
+   docker exec mediadb-postgres pg_isready -U postgres -d mediadb
+   ```
+4. Re-run migration:
+   ```bash
+   npm run db:migrate -- --name init
+   ```
+
+Tip: On Windows, `./scripts/setup-windows.ps1` now waits for PostgreSQL readiness before running migrations.
+
+
+## Troubleshooting `P3018` with `ERROR: type "vector" does not exist`
+This means your PostgreSQL instance does not have the `pgvector` extension available or enabled.
+
+If using Docker:
+1. Recreate the DB container using a pgvector image:
+   ```powershell
+   docker rm -f mediadb-postgres
+   ./scripts/setup-windows.ps1 -RecreateDbContainer
+   ```
+2. Re-run migration:
+   ```bash
+   npm run db:migrate -- --name init
+   ```
+
+If using your own local PostgreSQL, install/enable pgvector in that DB and then run:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
 When `-RecreateDbContainer` is used, the script also removes stale local `*_init` migrations so only the canonical baseline remains.
 
 
@@ -92,55 +140,10 @@ This error means Prisma cannot connect to PostgreSQL using your `DATABASE_URL`.
    ```
 4. Re-run migration:
    ```bash
-   npm run db:migrate
+   npm run db:migrate -- --name init
    ```
 
 Tip: On Windows, `./scripts/setup-windows.ps1` now waits for PostgreSQL readiness before running migrations.
-
-
-## Troubleshooting `P3018` with `ERROR: type "vector" does not exist`
-This means your PostgreSQL instance does not have the `pgvector` extension available or enabled.
-
-If using Docker:
-1. Recreate the DB container using a pgvector image:
-   ```powershell
-   docker rm -f mediadb-postgres
-   ./scripts/setup-windows.ps1 -RecreateDbContainer
-   ```
-2. Re-run migration:
-   ```bash
-   npm run db:migrate
-   ```
-
-If using your own local PostgreSQL, install/enable pgvector in that DB and then run:
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-```
-
-3. If Prisma still reports an older `*_init` migration (for example `20260218161957_init`), remove stale local init migrations and retry:
-   ```powershell
-   Get-ChildItem .\prisma\migrations -Directory | Where-Object { $_.Name -like "*_init" -and $_.Name -ne "20260219000000_init" } | Remove-Item -Recurse -Force
-   npm run db:migrate
-   ```
-
-## Troubleshooting `P3006` on shadow database (`type "vector" does not exist`)
-This happens when Prisma validates a migration that creates a `vector` column before the `vector` extension is enabled in that migration.
-
-What to do:
-1. Pull the latest repo changes (includes a baseline migration that enables `vector`).
-2. Reset and re-apply local DB state:
-   ```powershell
-   npm run db:reset
-   npm run db:migrate
-   npm run db:seed
-   ```
-
-If you still use Docker and have stale state, recreate the container:
-```powershell
-docker rm -f mediadb-postgres
-./scripts/setup-windows.ps1 -RecreateDbContainer
-```
-When `-RecreateDbContainer` is used, the script also removes stale local `*_init` migrations so only the canonical baseline remains.
 
 ## Starter endpoints
 - `GET /api/health`
