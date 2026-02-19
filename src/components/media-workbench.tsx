@@ -100,14 +100,11 @@ export function MediaWorkbench() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const tags = useMemo(
-    () =>
-      tagsInput
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-    [tagsInput]
-  );
+  const openAddForm = () => {
+    resetForm();
+    setError(null);
+    setViewMode("add");
+  };
 
   const handleFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
