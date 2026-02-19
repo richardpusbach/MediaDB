@@ -12,7 +12,6 @@ type Asset = {
   fileSize: number;
   filePath: string;
   thumbnailPath?: string | null;
-  isFavorite?: boolean;
   tags: string[];
   categoryId?: string;
   category?: Category;
@@ -51,8 +50,6 @@ export function MediaWorkbench() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(null);
-  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshCategories = useCallback(async () => {
@@ -104,47 +101,6 @@ export function MediaWorkbench() {
     [tagsInput]
   );
 
-  const isInlineCategory = selectedCategoryId === "__new";
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setTagsInput("");
-    setSelectedCategoryId("");
-    setNewCategoryName("");
-    setSelectedFile(null);
-    setSelectedThumbnail(null);
-    setEditingAssetId(null);
-    setIsFavorite(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const openAddForm = () => {
-    resetForm();
-    setViewMode("add");
-    setError(null);
-  };
-
-  const openEditForm = (asset: Asset) => {
-    setTitle(asset.title);
-    setDescription(asset.userDescription ?? "");
-    setTagsInput(asset.tags.join(", "));
-    setSelectedCategoryId(asset.categoryId ?? asset.category?.id ?? "");
-    setNewCategoryName("");
-    setSelectedFile(null);
-    setSelectedThumbnail(asset.thumbnailPath ?? null);
-    setEditingAssetId(asset.id);
-    setIsFavorite(Boolean(asset.isFavorite));
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setViewMode("edit");
-    setError(null);
-  };
-
-  const closeForm = () => {
-    resetForm();
-    setViewMode("gallery");
-  };
-
   const handleFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     setSelectedFile(file);
@@ -163,24 +119,6 @@ export function MediaWorkbench() {
     }
   };
 
-  const ensureCategory = async () => {
-    if (!isInlineCategory) return selectedCategoryId;
-
-    const categoryResponse = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: DEMO_USER_ID, name: newCategoryName })
-    });
-    const categoryBody = await categoryResponse.json();
-
-    if (!categoryResponse.ok) {
-      throw new Error(categoryBody.error ?? "Could not create category.");
-    }
-
-    await refreshCategories();
-    return categoryBody.data.id as string;
-  };
-
   const handleCreateAsset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -190,7 +128,6 @@ export function MediaWorkbench() {
       return;
     }
 
-    setSubmitting(true);
     try {
       const categoryId = await ensureCategory();
 
@@ -217,6 +154,14 @@ export function MediaWorkbench() {
         return;
       }
 
+      setTitle("");
+      setDescription("");
+      setTagsInput("");
+      setSelectedCategoryId("");
+      setNewCategoryName("");
+      setSelectedFile(null);
+      setSelectedThumbnail(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       await refreshAssets();
       closeForm();
     } catch (caughtError) {
@@ -274,216 +219,6 @@ export function MediaWorkbench() {
     }
   };
 
-  const renderGallery = () => (
-    <section className="panel">
-      <div className="toolbar">
-        <h2>Records</h2>
-        <div className="filters">
-          <input
-            placeholder="Search title/description"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <select value={filterCategoryId} onChange={(event) => setFilterCategoryId(event.target.value)}>
-            <option value="">All categories</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {error ? <p className="error">{error}</p> : null}
-      {loading ? <p>Loading...</p> : null}
-
-      <div className="asset-grid">
-        {assets.map((asset) => (
-          <button key={asset.id} className="asset-card" type="button" onClick={() => openEditForm(asset)}>
-            {asset.thumbnailPath ? (
-              <img className="asset-thumbnail" src={asset.thumbnailPath} alt={`${asset.title} thumbnail`} />
-            ) : (
-              <div className="asset-thumbnail placeholder">No thumbnail</div>
-            )}
-            <div className="asset-content">
-              <h3>{asset.title}</h3>
-              <p className="muted">{asset.category?.name ?? "Uncategorized"}</p>
-              <p className="muted">
-                {asset.fileType} - {asset.fileSize.toLocaleString()} bytes
-              </p>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {!loading && assets.length === 0 ? <p>No assets found.</p> : null}
-    </section>
-  );
-
-  const renderAddForm = () => (
-    <section className="panel">
-      <div className="form-header">
-        <h2>Add record</h2>
-        <button type="button" className="ghost" onClick={closeForm}>
-          Back to records
-        </button>
-      </div>
-      <form className="form-grid" onSubmit={handleCreateAsset}>
-        <label>
-          Title
-          <input required value={title} onChange={(event) => setTitle(event.target.value)} />
-        </label>
-
-        <label>
-          Description
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
-        </label>
-
-        <label>
-          Tags (comma-separated)
-          <input value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} />
-        </label>
-
-        <label>
-          Category
-          <select required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}>
-            <option value="">Select a category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-            <option value="__new">+ Create new category</option>
-          </select>
-        </label>
-
-        {isInlineCategory ? (
-          <label>
-            New category
-            <input required value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} />
-          </label>
-        ) : null}
-
-        <label className="file-picker">
-          Attach file
-          <input
-            ref={fileInputRef}
-            required
-            type="file"
-            onChange={(event) => {
-              void handleFileSelected(event);
-            }}
-          />
-        </label>
-
-        <div className="file-meta">
-          <p>
-            <strong>Selected file:</strong> {selectedFile?.name ?? "None"}
-          </p>
-          <p>
-            <strong>Type:</strong> {selectedFile?.type || "-"}
-          </p>
-          <p>
-            <strong>Size:</strong> {selectedFile ? `${selectedFile.size.toLocaleString()} bytes` : "-"}
-          </p>
-          {selectedThumbnail ? (
-            <img className="thumbnail-preview" src={selectedThumbnail} alt="Selected file preview" />
-          ) : (
-            <p className="muted">Thumbnail preview appears here for image files.</p>
-          )}
-        </div>
-
-        <button className="primary" type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : "Save record"}
-        </button>
-      </form>
-      {error ? <p className="error">{error}</p> : null}
-    </section>
-  );
-
-  const renderEditForm = () => (
-    <section className="panel">
-      <div className="form-header">
-        <h2>Edit record</h2>
-        <button type="button" className="ghost" onClick={closeForm}>
-          Back to records
-        </button>
-      </div>
-      <form className="form-grid" onSubmit={handleUpdateAsset}>
-        <label>
-          Title
-          <input required value={title} onChange={(event) => setTitle(event.target.value)} />
-        </label>
-
-        <label>
-          Description
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
-        </label>
-
-        <label>
-          Tags (comma-separated)
-          <input value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} />
-        </label>
-
-        <label>
-          Category
-          <select required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}>
-            <option value="">Select a category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-            <option value="__new">+ Create new category</option>
-          </select>
-        </label>
-
-        {isInlineCategory ? (
-          <label>
-            New category
-            <input required value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} />
-          </label>
-        ) : null}
-
-        <label className="checkbox-label">
-          <input type="checkbox" checked={isFavorite} onChange={(event) => setIsFavorite(event.target.checked)} />
-          Mark as favorite
-        </label>
-
-        <label className="file-picker">
-          Replace attachment (optional)
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={(event) => {
-              void handleFileSelected(event);
-            }}
-          />
-        </label>
-
-        <div className="file-meta">
-          {selectedThumbnail ? (
-            <img className="thumbnail-preview" src={selectedThumbnail} alt="Asset thumbnail preview" />
-          ) : (
-            <p className="muted">No thumbnail available.</p>
-          )}
-        </div>
-
-        <button className="primary" type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : "Save changes"}
-        </button>
-      </form>
-      {error ? <p className="error">{error}</p> : null}
-    </section>
-  );
-
-  const renderActiveView = () => {
-    if (viewMode === "add") return renderAddForm();
-    if (viewMode === "edit") return renderEditForm();
-    return renderGallery();
-  };
-
   return (
     <div className="stack">
       <section className="hero panel">
@@ -497,7 +232,282 @@ export function MediaWorkbench() {
         </button>
       </section>
 
-      {renderActiveView()}
+      {viewMode === "gallery" ? (
+        <section className="panel">
+          <div className="toolbar">
+            <h2>Records</h2>
+            <div className="filters">
+              <input
+                placeholder="Search title/description"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <select
+                value={filterCategoryId}
+                onChange={(event) => setFilterCategoryId(event.target.value)}
+              >
+                <option value="">All categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {error ? <p className="error">{error}</p> : null}
+          {loading ? <p>Loading...</p> : null}
+
+          <div className="asset-grid">
+            {assets.map((asset) => (
+              <button
+                key={asset.id}
+                className="asset-card"
+                type="button"
+                onClick={() => openEditForm(asset)}
+              >
+                {asset.thumbnailPath ? (
+                  <img className="asset-thumbnail" src={asset.thumbnailPath} alt={`${asset.title} thumbnail`} />
+                ) : (
+                  <div className="asset-thumbnail placeholder">No thumbnail</div>
+                )}
+                <div className="asset-content">
+                  <h3>{asset.title}</h3>
+                  <p className="muted">{asset.category?.name ?? "Uncategorized"}</p>
+                  <p className="muted">
+                    {asset.fileType} · {asset.fileSize.toLocaleString()} bytes
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {!loading && assets.length === 0 ? <p>No assets found.</p> : null}
+        </section>
+      ) : null}
+
+      {viewMode === "add" ? (
+        <section className="panel">
+          <div className="form-header">
+            <h2>Add record</h2>
+            <button type="button" className="ghost" onClick={closeForm}>
+              Back to records
+            </button>
+          </div>
+          <form className="form-grid" onSubmit={handleCreateAsset}>
+            <label>
+              Title
+              <input required value={title} onChange={(event) => setTitle(event.target.value)} />
+            </label>
+
+            <label>
+              Description
+              <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
+            </label>
+
+            <label>
+              Tags (comma-separated)
+              <input value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} />
+            </label>
+
+            <label>
+              Category
+              <select required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}>
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+                <option value="__new">+ Create new category</option>
+              </select>
+            </label>
+
+            {isInlineCategory ? (
+              <label>
+                New category
+                <input required value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} />
+              </label>
+            ) : null}
+
+            <label className="file-picker">
+              Attach file
+              <input
+                ref={fileInputRef}
+                required
+                type="file"
+                onChange={(event) => {
+                  void handleFileSelected(event);
+                }}
+              />
+            </label>
+          ) : null}
+
+          <label className="file-picker">
+            Attach file
+            <input
+              ref={fileInputRef}
+              required
+              type="file"
+              onChange={(event) => {
+                void handleFileSelected(event);
+              }}
+            />
+          </label>
+
+          <div className="file-meta">
+            <p>
+              <strong>Selected file:</strong> {selectedFile?.name ?? "None"}
+            </p>
+            <p>
+              <strong>Type:</strong> {selectedFile?.type || "-"}
+            </p>
+            <p>
+              <strong>Size:</strong> {selectedFile ? `${selectedFile.size.toLocaleString()} bytes` : "-"}
+            </p>
+            {selectedThumbnail ? (
+              <img className="thumbnail-preview" src={selectedThumbnail} alt="Selected file preview" />
+            ) : (
+              <p className="muted">Thumbnail preview appears here for image files.</p>
+            )}
+          </div>
+
+        <button className="primary" type="submit" disabled={submitting}>
+          {submitting ? "Saving..." : "Save record"}
+        </button>
+      </form>
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  );
+
+            <div className="file-meta">
+              <p>
+                <strong>Selected file:</strong> {selectedFile?.name ?? "None"}
+              </p>
+              <p>
+                <strong>Type:</strong> {selectedFile?.type || "-"}
+              </p>
+              <p>
+                <strong>Size:</strong> {selectedFile ? `${selectedFile.size.toLocaleString()} bytes` : "-"}
+              </p>
+              {selectedThumbnail ? (
+                <img className="thumbnail-preview" src={selectedThumbnail} alt="Selected file preview" />
+              ) : (
+                <p className="muted">Thumbnail preview appears here for image files.</p>
+              )}
+            </div>
+
+            <button className="primary" type="submit" disabled={submitting}>
+              {submitting ? "Saving..." : "Save record"}
+            </button>
+          </form>
+          {error ? <p className="error">{error}</p> : null}
+        </section>
+      ) : null}
+
+      {viewMode === "edit" ? (
+        <section className="panel">
+          <div className="form-header">
+            <h2>Edit record</h2>
+            <button type="button" className="ghost" onClick={closeForm}>
+              Back to records
+            </button>
+          </div>
+          <form className="form-grid" onSubmit={handleUpdateAsset}>
+            <label>
+              Title
+              <input required value={title} onChange={(event) => setTitle(event.target.value)} />
+            </label>
+
+        <button className="primary" type="submit" disabled={submitting}>
+          {submitting ? "Saving..." : "Save changes"}
+        </button>
+      </form>
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  );
+
+        <div className="asset-grid">
+          {assets.map((asset) => (
+            <article key={asset.id} className="asset-card">
+              {asset.thumbnailPath ? (
+                <img className="asset-thumbnail" src={asset.thumbnailPath} alt={`${asset.title} thumbnail`} />
+              ) : null}
+              <h3>{asset.title}</h3>
+              <p className="muted">{asset.category?.name ?? "Uncategorized"}</p>
+              <p>{asset.userDescription || "No description"}</p>
+              <p className="muted">File: {asset.filePath}</p>
+              <p className="muted">
+                {asset.fileType} · {asset.fileSize.toLocaleString()} bytes
+              </p>
+              {asset.tags.length > 0 ? (
+                <ul className="tag-list">
+                  {asset.tags.map((tag) => (
+                    <li key={tag}>{tag}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+          ))}
+        </div>
+
+            <label>
+              Tags (comma-separated)
+              <input value={tagsInput} onChange={(event) => setTagsInput(event.target.value)} />
+            </label>
+
+            <label>
+              Category
+              <select required value={selectedCategoryId} onChange={(event) => setSelectedCategoryId(event.target.value)}>
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+                <option value="__new">+ Create new category</option>
+              </select>
+            </label>
+
+            {isInlineCategory ? (
+              <label>
+                New category
+                <input required value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} />
+              </label>
+            ) : null}
+
+            <label className="checkbox-label">
+              <input type="checkbox" checked={isFavorite} onChange={(event) => setIsFavorite(event.target.checked)} />
+              Mark as favorite
+            </label>
+
+            <label className="file-picker">
+              Replace attachment (optional)
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={(event) => {
+                  void handleFileSelected(event);
+                }}
+              />
+            </label>
+
+            <div className="file-meta">
+              {selectedThumbnail ? (
+                <img className="thumbnail-preview" src={selectedThumbnail} alt="Asset thumbnail preview" />
+              ) : (
+                <p className="muted">No thumbnail available.</p>
+              )}
+            </div>
+
+            <button className="primary" type="submit" disabled={submitting}>
+              {submitting ? "Saving..." : "Save changes"}
+            </button>
+          </form>
+          {error ? <p className="error">{error}</p> : null}
+        </section>
+      ) : null}
     </div>
   );
 }
